@@ -14,7 +14,6 @@ import (
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"golang.org/x/crypto/acme/autocert"
 )
 
 func main() {
@@ -36,10 +35,6 @@ func main() {
 		flagServerReadHeaderTimeout = flag.Duration("serverreadheadertimeout", 30*time.Second, "Server read header timeout")
 		flagServerWriteTimeout      = flag.Duration("serverwritetimeout", 30*time.Second, "Server write timeout")
 		flagServerIdleTimeout       = flag.Duration("serveridletimeout", 30*time.Second, "Server idle timeout")
-
-		flagLetsEncrypt = flag.Bool("letsencrypt", false, "Use letsencrypt for https")
-		flagLEWhitelist = flag.String("lewhitelist", "", "Hostname to whitelist for letsencrypt")
-		flagLECacheDir  = flag.String("lecachedir", "/tmp", "Cache directory for certificates")
 	)
 
 	flag.Parse()
@@ -84,24 +79,6 @@ func main() {
 		TLSNextProto:      map[string]func(*http.Server, *tls.Conn, http.Handler){}, // Disable HTTP/2
 	}
 
-	if *flagLetsEncrypt {
-		if *flagLEWhitelist == "" {
-			p.Logger.Fatal("error: no -lewhitelist flag set")
-		}
-		if *flagLECacheDir == "/tmp" {
-			p.Logger.Info("-lecachedir should be set, using '/tmp' for now...")
-		}
-
-		m := &autocert.Manager{
-			Cache:      autocert.DirCache(*flagLECacheDir),
-			Prompt:     autocert.AcceptTOS,
-			HostPolicy: autocert.HostWhitelist(*flagLEWhitelist),
-		}
-
-		s.Addr = ":https"
-		s.TLSConfig = m.TLSConfig()
-	}
-
 	idleConnsClosed := make(chan struct{})
 	go func() {
 		sigint := make(chan os.Signal, 1)
@@ -118,7 +95,7 @@ func main() {
 	p.Logger.Info("Server starting", zap.String("address", s.Addr))
 
 	var svrErr error
-	if *flagCertPath != "" && *flagKeyPath != "" || *flagLetsEncrypt {
+	if *flagCertPath != "" && *flagKeyPath != "" {
 		svrErr = s.ListenAndServeTLS(*flagCertPath, *flagKeyPath)
 	} else {
 		svrErr = s.ListenAndServe()

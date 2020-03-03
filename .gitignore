@@ -3,3 +3,5 @@
 /forwardingproxy*
 /cert.pem
 /key.pem
+.vscode/launch.json
+__debug_bin
