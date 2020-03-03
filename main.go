@@ -131,4 +131,3 @@ func main() {
 	<-idleConnsClosed
 	p.Logger.Info("Server stopped")
 }
-
