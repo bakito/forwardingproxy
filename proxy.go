@@ -44,6 +44,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	applyBasicOutFor(r)
 
 	if r.URL.Scheme == "http" {
 		p.handleHTTP(w, r)

@@ -17,10 +17,11 @@ import (
 )
 
 func main() {
+
 	var (
 		flagCertPath = flag.String("cert", "", "Filepath to certificate")
 		flagKeyPath  = flag.String("key", "", "Filepath to private key")
-		flagAddr     = flag.String("addr", "", "Server address")
+		flagAddr     = flag.String("addr", ":3128", "Server address")
 		flagAuthUser = flag.String("user", "", "Server authentication username")
 		flagAuthPass = flag.String("pass", "", "Server authentication password")
 		flagAvoid    = flag.String("avoid", "", "Site to be avoided")
