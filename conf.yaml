@@ -1,5 +1,7 @@
 database: /tmp/database.kdbx
 urls:
   amazon.com:
-    group: Shops
+    groupPath:
+      - Internet
+      - Shops
     title: amazon.com

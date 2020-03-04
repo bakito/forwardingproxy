@@ -5,17 +5,14 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"syscall"
 
+	"github.com/howeyc/gopass"
 	"github.com/tobischo/gokeepasslib/v3"
-	"golang.org/x/crypto/ssh/terminal"
 	"gopkg.in/yaml.v2"
 )
 
 var (
-	auths  = map[string]string{"lh": "Shops/paravan.ch"}
-	config *KeepassConfig
-	groups []gokeepasslib.Group
+	auths = make(map[string]auth)
 )
 
 func init() {
@@ -27,7 +24,7 @@ func init() {
 		panic(err)
 	}
 
-	config = &KeepassConfig{}
+	config := &KeepassConfig{}
 	err = yaml.Unmarshal(yamlFile, &config)
 	if err != nil {
 		panic(err)
@@ -38,40 +35,76 @@ func init() {
 	}
 
 	fmt.Printf("Enter Password for database %s: ", config.Database)
-	bytePassword, err := terminal.ReadPassword(int(syscall.Stdin))
-	if err != nil {
-		panic(err)
-	}
-
+	// Silent. For printing *'s use gopass.GetPasswdMasked()
+	password, err := gopass.GetPasswdMasked()
 	file, _ := os.Open(config.Database)
+	defer file.Close()
 	db := gokeepasslib.NewDatabase()
-	db.Credentials = gokeepasslib.NewPasswordCredentials(string(bytePassword))
+	db.Credentials = gokeepasslib.NewPasswordCredentials(string(password))
 	_ = gokeepasslib.NewDecoder(file).Decode(db)
 
 	db.UnlockProtectedEntries()
-	groups = db.Content.Root.Groups[0].Groups
+	groups := db.Content.Root.Groups
+
+	for u, e := range config.Urls {
+
+		auth := extractAuth(groups, e)
+		if auth != nil {
+			auths[u] = *auth
+		}
+	}
 
 }
 
 func applyBasicOutFor(req *http.Request) {
-	if len(groups) == 0 || config == nil {
+	if len(auths) == 0 {
 		return
 	}
-	entry, ok := config.Urls[req.URL.Hostname()]
+	auth, ok := auths[req.URL.Hostname()]
 
 	if !ok {
 		return
 	}
 
+	req.SetBasicAuth(auth.username, auth.password)
+}
+
+func getGroup(groups []gokeepasslib.Group, paths []string) *gokeepasslib.Group {
 	for _, g := range groups {
-		if g.Name == entry.Group {
-			for _, e := range g.Entries {
-				if e.GetTitle() == entry.Title {
-					req.SetBasicAuth(e.GetContent("UserName"), e.GetPassword())
-				}
+		if g.Name == paths[0] {
+			if len(paths) == 1 {
+				return &g
+			}
+			if len(paths) > 0 {
+				return getGroup(g.Groups, paths[1:])
 			}
 		}
 	}
+	return nil
+}
+
+func getEntry(group *gokeepasslib.Group, title string) *gokeepasslib.Entry {
+	for _, e := range group.Entries {
+		if e.GetTitle() == title {
+			return &e
+		}
+	}
+	return nil
+}
+
+func extractAuth(groups []gokeepasslib.Group, entry *Entry) *auth {
+	g := getGroup(groups, entry.GroupPath)
+	var a *auth
+	if g != nil {
+		e := getEntry(g, entry.Title)
+		if e != nil {
+			a = &auth{
+				username: e.GetContent("UserName"),
+				password: e.GetPassword(),
+			}
+		}
+	}
+	return a
 }
 
 // KeepassConfig keepass configuration
@@ -82,6 +115,11 @@ type KeepassConfig struct {
 
 // Entry a keepass entry
 type Entry struct {
-	Group string `yaml:"group"`
-	Title string `yaml:"title"`
+	GroupPath []string `yaml:"groupPath"`
+	Title     string   `yaml:"title"`
+}
+
+type auth struct {
+	username string
+	password string
 }
