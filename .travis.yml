@@ -1,5 +1,3 @@
-# Copyright (C) 2018 Betalo AB - All Rights Reserved
-
 ---
 notifications:
   email: false
@@ -7,9 +5,7 @@ notifications:
 language: go
 
 go:
-  - 1.10.x
+  - 1.14.x
 
 script:
-  - make lint
-  - make build
-  - make test
+  - go build ./...
