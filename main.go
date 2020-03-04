@@ -19,13 +19,8 @@ import (
 func main() {
 
 	var (
-		flagCertPath = flag.String("cert", "", "Filepath to certificate")
-		flagKeyPath  = flag.String("key", "", "Filepath to private key")
-		flagAddr     = flag.String("addr", ":3128", "Server address")
-		flagAuthUser = flag.String("user", "", "Server authentication username")
-		flagAuthPass = flag.String("pass", "", "Server authentication password")
-		flagAvoid    = flag.String("avoid", "", "Site to be avoided")
-		flagVerbose  = flag.Bool("verbose", false, "Set log level to DEBUG")
+		flagAddr    = flag.String("addr", ":3128", "Server address")
+		flagVerbose = flag.Bool("verbose", false, "Set log level to DEBUG")
 
 		flagDestDialTimeout         = flag.Duration("destdialtimeout", 10*time.Second, "Destination dial timeout")
 		flagDestReadTimeout         = flag.Duration("destreadtimeout", 5*time.Second, "Destination read timeout")
@@ -59,14 +54,11 @@ func main() {
 	p := &Proxy{
 		ForwardingHTTPProxy: NewForwardingHTTPProxy(stdLogger),
 		Logger:              logger,
-		AuthUser:            *flagAuthUser,
-		AuthPass:            *flagAuthPass,
 		DestDialTimeout:     *flagDestDialTimeout,
 		DestReadTimeout:     *flagDestReadTimeout,
 		DestWriteTimeout:    *flagDestWriteTimeout,
 		ClientReadTimeout:   *flagClientReadTimeout,
 		ClientWriteTimeout:  *flagClientWriteTimeout,
-		Avoid:               *flagAvoid,
 	}
 
 	s := &http.Server{
@@ -95,12 +87,7 @@ func main() {
 
 	p.Logger.Info("Server starting", zap.String("address", s.Addr))
 
-	var svrErr error
-	if *flagCertPath != "" && *flagKeyPath != "" {
-		svrErr = s.ListenAndServeTLS(*flagCertPath, *flagKeyPath)
-	} else {
-		svrErr = s.ListenAndServe()
-	}
+	svrErr := s.ListenAndServe()
 
 	if svrErr != http.ErrServerClosed {
 		p.Logger.Error("Listening for incoming connections failed", zap.Error(svrErr))

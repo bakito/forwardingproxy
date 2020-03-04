@@ -53,7 +53,6 @@ func init() {
 			auths[u] = *auth
 		}
 	}
-
 }
 
 func applyBasicOutFor(req *http.Request) {
